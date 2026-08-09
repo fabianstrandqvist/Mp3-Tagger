@@ -2,7 +2,7 @@ use adw::prelude::*;
 use id3::{Tag, TagLike};
 
 use adw::glib;
-use adw::gtk::{Box, ListBox, Orientation, SelectionMode, Button};
+use adw::gtk::{Box, ListBox, Orientation, SelectionMode, Button, FileDialog};
 use adw::{ActionRow, Application, ApplicationWindow, HeaderBar};
 
 const APP_ID: &str = "org.gtk_rs.HelloWorld2";
@@ -24,6 +24,12 @@ fn file_demo() -> Result<String, std::boxed::Box<dyn std::error::Error>> {
 }
 
 fn build_ui(app: &Application) {
+    let filedialog = FileDialog::builder()
+        .title("Select a file")
+        .accept_label("Open")
+        .modal(true)
+        .build();
+
     // Create a button with label and margins
     let button = Button::builder()
         .label("Press me!")
@@ -33,12 +39,27 @@ fn build_ui(app: &Application) {
         .margin_end(12)
         .build();
 
-    // Connect to "clicked" signal of `button`
-    button.connect_clicked(|button| {
-        match file_demo() {
-            Ok(title) => println!("Got title: {title}"),
-            Err(e) => eprintln!("Failed to read tag: {e}"),
-        } 
+    button.connect_clicked(move |button| {
+        let dialog = filedialog.clone();
+        let window = button.root().and_downcast::<adw::gtk::Window>();
+        glib::spawn_future_local(async move {
+            match dialog.open_future(window.as_ref()).await {
+                Ok(file) => {
+                    println!("Selected file: {:?}", file);
+                    match file_demo() {
+                        Ok(title) => {
+                            println!("Title: {}", title);
+                        }
+                        Err(err) => {
+                            eprintln!("Error reading file: {:?}", err);
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Error selecting file: {:?}", err);
+                }
+            }
+        });
     });
 
 
