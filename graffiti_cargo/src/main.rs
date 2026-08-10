@@ -1,6 +1,7 @@
 use adw::prelude::*;
-use id3::{Tag, TagLike};
+use id3::{Tag, TagLike, Version, ErrorKind};
 
+use std::path::Path;
 use adw::glib;
 use adw::gtk::{Box, ListBox, Orientation, SelectionMode, Button, FileDialog};
 use adw::{ActionRow, Application, ApplicationWindow, HeaderBar};
@@ -18,9 +19,16 @@ fn main() -> glib::ExitCode {
     app.run()
 }
 
-fn file_demo() -> Result<String, std::boxed::Box<dyn std::error::Error>> {
-    let tag = Tag::read_from_path("/home/fabianstrandqvist/Music/Kall_Me_Soon_prod._Goyxrd_x_Telxry.mp3")?;
-    return Ok(tag.title().unwrap_or("Unknown").to_string());
+fn set_artist(path: &Path, artist: &str) -> Result<(), id3::Error> {
+    let mut tag = match Tag::read_from_path(path) {
+        Ok(tag) => tag,
+        Err(e) if matches!(e.kind, ErrorKind::NoTag) => Tag::new(),
+        Err(e) => return Err(e),
+    };
+
+    tag.set_artist(artist);
+    tag.write_to_path(path, Version::Id3v24)?;
+    Ok(())
 }
 
 fn build_ui(app: &Application) {
@@ -45,13 +53,18 @@ fn build_ui(app: &Application) {
         glib::spawn_future_local(async move {
             match dialog.open_future(window.as_ref()).await {
                 Ok(file) => {
-                    println!("Selected file: {:?}", file);
-                    match file_demo() {
-                        Ok(title) => {
-                            println!("Title: {}", title);
+                    let Some(path) = file.path() else {
+                        eprintln!("not a local file");
+                        return;
+                    };
+
+                    // println!("Selected file: {:?}", file);
+                    match set_artist(&path, "Artist") {
+                        Ok(()) => {
+                            println!("Tags updated successfully");
                         }
                         Err(err) => {
-                            eprintln!("Error reading file: {:?}", err);
+                            eprintln!("Error updating tag: {:?}", err);
                         }
                     }
                 }
