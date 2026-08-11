@@ -1,0 +1,6 @@
+- being able to fill an album with a pic and album title etc
+- automatic name filling (a lot of my titles have (producer name))
+- optional image resizing or cropping
+- better UI
+- Display the image so user knows what it picked
+- Signify that the saving worked and clear the information from the UI
